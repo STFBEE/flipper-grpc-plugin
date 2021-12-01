@@ -58,7 +58,7 @@ private class LoggingForwardingClientCall<ReqT, RespT>(
                 id = requestId,
                 authority = next.authority(),
                 method = method.fullMethodName,
-                data = message?.toJson() ?: "",
+                data = safeHugeMessage(message?.toJson()) ?: "",
                 unixTimestampMs = System.currentTimeMillis(),
                 headers = headers?.toHeaders().orEmpty()
             )
@@ -86,7 +86,7 @@ private class LoggingClientCallListener<RespT>(
                 status = status.code.toString(),
                 cause = status.description,
                 headers = (this.headers ?: trailers).toHeaders(),
-                data = message?.toJson()
+                data = safeHugeMessage(message?.toJson()) ?: ""
             )
         )
     }
@@ -102,5 +102,15 @@ private class LoggingClientCallListener<RespT>(
     }
 }
 
+fun safeHugeMessage(message: String?): String? {
+    return message?.let {
+        if (message.toByteArray().size > maxPayloadSize) {
+            "Message too big"
+        } else message
+    }
+}
+
 private val gson = GsonBuilder().setPrettyPrinting().create()
 private fun Any.toJson() = gson.toJson(this)
+
+private const val maxPayloadSize = 0xFFFFFF
